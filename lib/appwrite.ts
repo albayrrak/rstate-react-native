@@ -1,4 +1,4 @@
-import { Client, Account, ID, Avatars, OAuthProvider } from 'react-native-appwrite';
+import { Client, Account, ID, Avatars, OAuthProvider, Databases, Query } from 'react-native-appwrite';
 import * as Linking from 'expo-linking';
 import { openAuthSessionAsync } from "expo-web-browser"
 
@@ -6,6 +6,11 @@ export const config = {
     platform: "com.ycl.realstate",
     endpoint: process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT,
     projectId: process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID,
+    databaseId: process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
+    galleriesCollectionId: process.env.EXPO_PUBLIC_APPWRITE_GALLERIES_COLLECTION_ID,
+    propertiesCollectionId: process.env.EXPO_PUBLIC_APPWRITE_PROPERTIES_COLLECTION_ID,
+    agentsCollectionId: process.env.EXPO_PUBLIC_APPWRITE_AGENTS_COLLECTION_ID,
+    reviewsCollectionId: process.env.EXPO_PUBLIC_APPWRITE_REVIEWS_COLLECTION_ID,
 }
 
 const client = new Client()
@@ -16,6 +21,7 @@ client.setPlatform(config.platform!);
 
 export const avatar = new Avatars(client)
 export const account = new Account(client)
+export const databases = new Databases(client)
 
 export async function login() {
     try {
@@ -74,4 +80,46 @@ export const getCurrentUser = async () => {
     } catch (error) {
 
     }
+}
+
+export const getLatestProperties = async () => {
+    try {
+        const result = await databases.listDocuments(config.databaseId!, config.propertiesCollectionId!, [Query.orderAsc("$createdAt"), Query.limit(10)])
+        console.log(result.documents);
+        return result.documents
+    } catch (error) {
+        console.log(error);
+        return []
+    }
+
+}
+
+export const getProperties = async ({ filter, query, limit }: { filter: string, query: string, limit?: number }) => {
+
+    try {
+        const builderQuery = [Query.orderDesc("$createdAt")]
+
+        if (filter && filter !== "All") {
+            builderQuery.push(Query.equal("type", filter))
+        }
+
+        if (query) {
+            builderQuery.push(
+                Query.or([
+                    Query.search("name", query), Query.search("address", query), Query.search("type", query)])
+            )
+        }
+
+        if (limit) {
+            builderQuery.push(Query.limit(limit))
+        }
+
+        const result = await databases.listDocuments(config.databaseId!, config.propertiesCollectionId!, builderQuery)
+        return result.documents
+    } catch (error) {
+        console.log(error);
+        return []
+
+    }
+
 }
